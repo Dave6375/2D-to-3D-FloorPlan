@@ -1,5 +1,6 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import Navbar from "../../components/Navbar";
+
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +10,23 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Welcome />;
+  return (
+      <div className='home'>
+        <Navbar />
+
+          <section className='hero'>
+              <div className='announce'>
+                  <div className='dot'>
+                      <div className='pulse'></div>
+                  </div>
+
+                  <p>Introducing Simplex 2D to 3D Platform</p>
+
+                  <h1>Build beautiful spaces at the speed of though with Simplex</h1>
+
+
+              </div>
+          </section>
+      </div>
+  )
 }
