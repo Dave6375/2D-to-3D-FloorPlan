@@ -24,7 +24,7 @@ interface DesignItem {
     ownerId?: string | null;
     sharedBy?: string | null;
     sharedAt?: string | null;
-    isPublic?: boolean;
+    visibility?: "public" | "private" | "shared";
 }
 
 interface DesignConfig {
@@ -62,7 +62,7 @@ interface VisualizerProps {
     projectName?: string;
     projectId?: string;
     initialRender?: string | null;
-    isPublic?: boolean;
+    visibility?: "public" | "private" | "shared";
     sharedBy?: string | null;
     canUnshare?: boolean;
 }
@@ -118,7 +118,7 @@ interface StoreHostedImageParams {
 
 interface CreateProjectParams {
     item: DesignItem;
-    visibility?: "private" | "public";
+    visibility?: "public" | "private" | "shared";
 }
 
 interface Generate3DViewParams {

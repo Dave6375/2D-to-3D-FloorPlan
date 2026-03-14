@@ -5,22 +5,59 @@ import {ArrowRight, Clock, GemIcon, Layers} from "lucide-react";
 import Button from "../../components/Button";
 import {useNavigate} from "react-router";
 import React from "react";
-import {createProject} from "../../lib/puter.action";
+import {createProject, getProjects} from "../../lib/puter.action";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Simplex - 2D to 3D Platform" },
+    { name: "description", content: "Build beautiful spaces at the speed of thought with Simplex" },
   ];
 }
 
+/**
+ * ### Really simply:
+ *
+ * This is the **main page** where you can see all your projects and upload new ones.
+ *
+ * ### Step by stepl
+ *
+ * - sets up a way to move between pages (`navigate`)
+ * - keeps track of your **projects** and whether they are still **loading**
+ * - when the page first opens, it **fetches all your projects** from the database
+ * - once the projects are found, it updates the list and stops the loading spinner
+ *
+ * ### One important note
+ *
+ * This component is the **entry point** for the app. It handles both the **initial data load** and the **uploading process** for new designs.
+ */
 export default function Home() {
   const navigate = useNavigate();
   const [projects, setProjects] = React.useState<DesignItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    /**
+     * ### Simple logic:
+     *
+     * This function runs **once** when the page loads. It:
+     * 1. Calls the database to **get your projects**
+     * 2. **Sets the projects** to the list you see on screen
+     * 3. **Turns off the loading state** no matter what happened (success or error)
+     */
+    const fetchInitialProjects = async () => {
+      try {
+        const fetchedProjects = await getProjects();
+        setProjects(fetchedProjects);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInitialProjects();
+  }, []);
 
   const handleUploadComplete = async (base64Image: string) => {
     const newId = Date.now().toString();
-    const name = `Resience ${newId}`;
+    const name = `Residence ${newId}`;
 
     const newItem: DesignItem = {
       id: newId,
@@ -36,7 +73,7 @@ export default function Home() {
         return false
     }
 
-    setProjects((prev) => [newItem, ...prev]);
+    setProjects((prev) => [saved, ...prev]);
 
 
     localStorage.setItem(`upload_${newId}`, base64Image);
@@ -44,6 +81,7 @@ export default function Home() {
       state: {
         initialImage: saved.sourceImage,
         initialRendered: saved.renderedImage || null,
+        name: saved.name
       },
     });
 
@@ -108,9 +146,14 @@ export default function Home() {
           </div>
 
           <div className="projects-grid">
-            {projects.map(({ id, name, renderedImage, sourceImage, timestamp }) => (
-                
-              <div key={id} className="project-card group">
+            {loading ? (
+              <div className="loading">Loading projects...</div>
+            ) : projects.length === 0 ? (
+              <div className="loading">No projects yet. Upload one to get started!</div>
+            ) : projects.map(({ id, name, renderedImage, sourceImage, timestamp }) => (
+
+
+              <div key={id} className="project-card group" onClick={() => navigate(`/visualizer/${id}`, { state: { initialImage: sourceImage, initialRendered: renderedImage || null, name } })}>
                 <div className="preview">
                   <img
                     src={renderedImage || sourceImage}
