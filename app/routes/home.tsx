@@ -1,13 +1,13 @@
 import type { Route } from "./+types/home";
 import Navbar from "../../components/Navbar";
 import Upload from "../../components/upload";
-import {ArrowRight, Clock, GemIcon, Layers} from "lucide-react";
+import {ArrowRight, Clock, GemIcon, Layers, Trash2} from "lucide-react";
 import Button from "../../components/Button";
 import {useNavigate} from "react-router";
 import React from "react";
-import {createProject, getProjects} from "../../lib/puter.action";
+import {createProject, deleteProject, getProjects} from "../../lib/puter.action";
 
-export function meta({}: Route.MetaArgs) {
+export function meta(args: Route.MetaArgs) {
   return [
     { title: "Simplex - 2D to 3D Platform" },
     { name: "description", content: "Build beautiful spaces at the speed of thought with Simplex" },
@@ -56,7 +56,7 @@ export default function Home() {
   }, []);
 
   const handleUploadComplete = async (base64Image: string) => {
-    const newId = Date.now().toString();
+    const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const name = `Residence ${newId}`;
 
     const newItem: DesignItem = {
@@ -75,8 +75,6 @@ export default function Home() {
 
     setProjects((prev) => [saved, ...prev]);
 
-
-    localStorage.setItem(`upload_${newId}`, base64Image);
     navigate(`/visualizer/${newId}`, {
       state: {
         initialImage: saved.sourceImage,
@@ -86,6 +84,19 @@ export default function Home() {
     });
 
     return true;
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const confirmed = window.confirm("Are you sure you want to delete this project?");
+    if (!confirmed) return;
+
+    const success = await deleteProject(id);
+    if (success) {
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    } else {
+      alert("Failed to delete project. Please try again.");
+    }
   };
 
   return (
@@ -153,7 +164,18 @@ export default function Home() {
             ) : projects.map(({ id, name, renderedImage, sourceImage, timestamp }) => (
 
 
-              <div key={id} className="project-card group" onClick={() => navigate(`/visualizer/${id}`, { state: { initialImage: sourceImage, initialRendered: renderedImage || null, name } })}>
+              <div
+                key={id}
+                className="project-card group"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/visualizer/${id}`, { state: { initialImage: sourceImage, initialRendered: renderedImage || null, name } })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    navigate(`/visualizer/${id}`, { state: { initialImage: sourceImage, initialRendered: renderedImage || null, name } });
+                  }
+                }}
+              >
                 <div className="preview">
                   <img
                     src={renderedImage || sourceImage}
@@ -162,6 +184,13 @@ export default function Home() {
                   <div className="badge">
                     <span>Community</span>
                   </div>
+                  <button
+                    className="delete-btn"
+                    onClick={(e) => handleDelete(e, id)}
+                    title="Delete project"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
 
                 <div className="card-body">
