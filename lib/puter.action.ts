@@ -25,6 +25,17 @@ import {isHostedUrl} from "./utils";
  * @param item
  */
 
+const normalizeLegacyVisibility = (project: any): DesignItem => {
+  if ('isPublic' in project) {
+    const { isPublic, ...restProject } = project;
+    return {
+      ...restProject,
+      visibility: isPublic ? "public" : "private"
+    } as DesignItem;
+  }
+  return project as DesignItem;
+};
+
 export const createProject = async ({ item, visibility }: CreateProjectParams): Promise<DesignItem | null | undefined> => {
   const projectId = item.id;
 
@@ -78,19 +89,11 @@ export const createProject = async ({ item, visibility }: CreateProjectParams): 
   try {
     // Call the pute worker to store project in kv
     const PROJECTS_KEY = "simplex_projects";
-    const existingProjects = (await puter.kv.get(PROJECTS_KEY)) as any[] || [];
+    const result = await puter.kv.get(PROJECTS_KEY);
+    const existingProjects = Array.isArray(result) ? result : [];
     
     // Convert legacy isPublic to visibility for all projects
-    const normalizedProjects: DesignItem[] = existingProjects.map(p => {
-      if ('isPublic' in p) {
-        const { isPublic, ...restProject } = p;
-        return {
-          ...restProject,
-          visibility: isPublic ? "public" : "private"
-        } as DesignItem;
-      }
-      return p as DesignItem;
-    });
+    const normalizedProjects: DesignItem[] = existingProjects.map(normalizeLegacyVisibility);
 
     // Check if the project already exists, if it does, update it, otherwise prepend
     const index = normalizedProjects.findIndex((p: DesignItem) => p.id === payload.id);
@@ -111,19 +114,13 @@ export const createProject = async ({ item, visibility }: CreateProjectParams): 
 export const getProjectById = async (id: string): Promise<DesignItem | null> => {
   try {
     const PROJECTS_KEY = "simplex_projects";
-    const existingProjects = (await puter.kv.get(PROJECTS_KEY)) as any[] || [];
+    const result = await puter.kv.get(PROJECTS_KEY);
+    const existingProjects = Array.isArray(result) ? result : [];
     const project = existingProjects.find((p: any) => p.id === id);
     if (!project) return null;
 
     // Handle legacy conversion
-    if ('isPublic' in project) {
-      const { isPublic, ...rest } = project;
-      return {
-        ...rest,
-        visibility: isPublic ? "public" : "private"
-      } as DesignItem;
-    }
-    return project as DesignItem;
+    return normalizeLegacyVisibility(project);
   } catch (e) {
     console.error(`Failed to fetch project ${id}: ${e}`);
     return null;
@@ -133,21 +130,32 @@ export const getProjectById = async (id: string): Promise<DesignItem | null> => 
 export const getProjects = async (): Promise<DesignItem[]> => {
   try {
     const PROJECTS_KEY = "simplex_projects";
-    const projects = (await puter.kv.get(PROJECTS_KEY)) as any[] || [];
+    const result = await puter.kv.get(PROJECTS_KEY);
+    const projects = Array.isArray(result) ? result : [];
     
     // Normalize all projects for consistency
-    return projects.map(p => {
-      if ('isPublic' in p) {
-        const { isPublic, ...rest } = p;
-        return {
-          ...rest,
-          visibility: isPublic ? "public" : "private"
-        } as DesignItem;
-      }
-      return p as DesignItem;
-    });
+    return projects.map(normalizeLegacyVisibility);
   } catch (e) {
     console.error(`Failed to fetch projects: ${e}`);
     return [];
+  }
+};
+
+export const deleteProject = async (id: string): Promise<boolean> => {
+  try {
+    const PROJECTS_KEY = "simplex_projects";
+    const result = await puter.kv.get(PROJECTS_KEY);
+    const existingProjects = Array.isArray(result) ? result : [];
+    const filteredProjects = existingProjects.filter((p: any) => p.id !== id);
+    
+    if (filteredProjects.length === existingProjects.length) {
+      return false; // Not found
+    }
+    
+    await puter.kv.set(PROJECTS_KEY, filteredProjects);
+    return true;
+  } catch (e) {
+    console.error(`Failed to delete project ${id}: ${e}`);
+    return false;
   }
 };
